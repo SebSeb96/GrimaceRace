@@ -1,0 +1,214 @@
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+
+	<link rel="stylesheet" type="text/css" href="styles1.css">
+	<title>gameplay.html</title>
+
+
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+	<style>
+		#canvas {
+			display: none;
+		}
+		#timer, #score {
+			color: white;
+		}
+	</style>
+</head>
+
+
+<body>
+	<div class="container">
+		<img src="happy.png" id="image3">
+		<!-- <h2 id="command"></h2> -->
+		<h3 id="timer"></h3>
+		<h3 id="score"></h3>
+
+
+		<video id="video" width="640" height="480" autoplay></video>
+		<div id="responseTextArea"> </div>
+		<canvas id="canvas" width="640" height="480"></canvas>
+	</div>
+
+
+
+	<script>
+		// document.addEventListener("keypress", function (event) {
+		// 	if (event.keyCode == 32) {
+		// 		document.getElementById("image3").style.visibility = "hidden";
+		// 	}
+		// })
+
+    document.getElementById("image3").style.color = "white"
+
+
+    //
+    // function toggleEmo(newEmo,lastEmo) {
+    //   document.getElementById(newEmo).style.display = "none"
+    // }
+
+
+		var canvas = document.getElementById('canvas');
+		var context = canvas.getContext('2d');
+		var video = document.getElementById('video');
+
+		if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+			navigator.mediaDevices.getUserMedia({ video: true }).then(function (stream) {
+				video.src = window.URL.createObjectURL(stream);
+				video.play();
+
+			});
+		}
+
+    var dict = {
+      "anger":"angry",
+      "disgust":"disgusted",
+      "fear":"scared",
+      "happiness":"happy",
+      "sadness":"sad",
+      "surprise":"surprised"
+    }
+
+    function switchImage(src) {
+      document.getElementById("image3").src = src
+
+    }
+
+		var score = 0;
+		currentTask = randomEmotion();
+		setCommandText(currentTask);
+    var incrementSec = false;
+		var timer = 15;
+		var result;
+		var interval = setInterval(function () {
+      if (incrementSec) {
+        timer -= 1;
+       }
+       // if (incrementSec) {
+       //   document.getElementById("image3").src = "title.png"
+       // } else {
+       //   document.getElementById("image3").src = "happy.png"
+       // }
+      incrementSec = !incrementSec;
+			result = processImage(currentTask);
+      switchImage(dict[currentTask] +".png")
+			console.log(result);
+			$("#timer").text(timer);
+			$("#score").text("Score: " + score);
+		}, 500);
+
+
+		setInterval(function () {
+			if (timer === 0) {
+				window.clearInterval(interval);
+				console.log('sorry mate you lost the game but you looked funny')
+				window.location.replace("grimaserace.html");
+			}
+		}, 10)
+
+
+		function setCommandText(emo) {
+			$("#command").text("Hey please be " + dict[emo])
+		}
+
+		function randomEmotion() {
+			// var emotionsArray = ["anger", "contempt", "disgust", "fear", "happiness", "neutral", "sadness", "surprise"];
+			var emotionsArray = ["anger",  "disgust", "fear", "happiness",  "sadness", "surprise"];
+			var randEmotion = emotionsArray[Math.floor(Math.random() * emotionsArray.length)];
+			return randEmotion;
+		}
+
+		function processImage() {
+			// draw image to canvas
+			context.drawImage(video, 0, 0, 640, 480);
+
+			// get dataUrl from canvas
+			var dataUrl = canvas.toDataURL('image/jpeg');
+
+			// transform dataUrl to binary
+			var data = dataUrl.split(',')[1];
+			var bytes = window.atob(data);
+			var buf = new ArrayBuffer(bytes.length);
+			var byteArr = new Uint8Array(buf);
+			for (var i = 0; i < bytes.length; i++) {
+				byteArr[i] = bytes.charCodeAt(i);
+			}
+
+
+			// Microsoft Face Api
+			var subscriptionKey = "e949ca019c484f80b9a8af1962afff55";
+			var uriBase = "https://westeurope.api.cognitive.microsoft.com/face/v1.0/detect";
+			// Request parameters.
+			var params = {
+				"returnFaceId": "true",
+				"returnFaceLandmarks": "false",
+				"returnFaceAttributes": "age,emotion"
+				// "returnFaceAttributes": "age,gender,headPose,smile,facialHair,glasses,emotion,hair,makeup,occlusion,accessories,blur,exposure,noise",
+			};
+
+			// Ajax request to Microsoft Face Api
+			$.ajax({
+				url: uriBase + "?" + $.param(params),
+				processData: false,
+				// Request headers.
+				beforeSend: function (xhrObj) {
+					// xhrObj.setRequestHeader("Content-Type", "application/json");
+					xhrObj.setRequestHeader("Content-Type", "application/octet-stream");
+					xhrObj.setRequestHeader("Ocp-Apim-Subscription-Key", subscriptionKey);
+				},
+
+				type: "POST",
+
+				// Request body.
+				// data: '{"url": ' + '"' + byteArr + '"}'
+				data: byteArr
+			}).done(function (data) {
+				var emotions = data[0].faceAttributes.emotion;
+				emotions.neutral = 0;
+				// $("#responseTextArea").text(JSON.stringify(emotions));
+
+				var max = 0;
+				var bestEmotion;
+				for (var prop in emotions) {
+					// skip loop if the property is from prototype
+					if (!emotions.hasOwnProperty(prop)) continue;
+					if (emotions[prop] > max && (emotions[prop] > 0.15 || prop == 'fear' && emotions[prop] == 0.005) ) {
+						bestEmotion = prop;
+					}
+				}
+
+				console.log(bestEmotion)
+
+				if (bestEmotion === currentTask) {
+					currentTask = randomEmotion();
+					//setCommandText(currentTask);
+					score += 1;
+					timer = 15;
+				}
+
+
+			}).fail(function (jqXHR, textStatus, errorThrown) {
+				// Display error message.
+				var errorString = (errorThrown === "") ? "Error. " : errorThrown + " (" + jqXHR.status + "): ";
+				errorString += (jqXHR.responseText === "") ? "" : (jQuery.parseJSON(jqXHR.responseText).message) ?
+					jQuery.parseJSON(jqXHR.responseText).message : jQuery.parseJSON(jqXHR.responseText).error.message;
+				alert(errorString);
+			});
+
+		};
+
+
+
+		// document.getElementById("snap").addEventListener("click", function () {
+		// 	processImage();
+		// });
+	</script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,46 @@
+/* CSS Document */
+
+body{
+	background-image: url("wallpaper.jpg");
+	background-repeat:no-repeat;
+	background-size:auto auto;}
+
+.image1 {
+	margin-top: 180px;
+	width: 100%;
+	max-width: 1000px;
+	height: auto;
+	margin-left: auto;
+	margin-right: auto;
+	margin-bottom: 100px;
+	}
+
+.image2 {
+	height:80px;
+	width: auto;
+	margin-right: -110px;
+}
+
+
+#image3 {
+	padding-top: 80px;
+	width: 70%;
+	max-width: 500px;
+	padding-bottom: 30px;
+	height: auto;
+	margin: auto;
+}
+
+.center {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+.container {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
